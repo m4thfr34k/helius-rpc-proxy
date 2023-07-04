@@ -16,8 +16,15 @@ export default {
 		const corsHeaders: Record<string, string> = {
 			'Access-Control-Allow-Methods': 'GET, HEAD, POST, PUT, OPTIONS',
 			'Access-Control-Allow-Headers': '*',
-			'Access-Control-Allow-Origin': '*',
 		};
+		if (supportedDomains) {
+			const origin = request.headers.get('Origin');
+			if (origin && supportedDomains.includes(origin)) {
+				corsHeaders['Access-Control-Allow-Origin'] = origin;
+			}
+		} else {
+			corsHeaders['Access-Control-Allow-Origin'] = '*';
+		}
 
 		if (request.method === 'OPTIONS') {
 			return new Response(null, {
@@ -27,6 +34,7 @@ export default {
 		}
 
 		const upgradeHeader = request.headers.get('Upgrade');
+
 		if (upgradeHeader || upgradeHeader === 'websocket') {
 			return await fetch(`https://mainnet.helius-rpc.com/?api-key=${env.HELIUS_API_KEY}`, request);
 		}
@@ -34,20 +42,24 @@ export default {
 		const { pathname, search } = new URL(request.url);
 		const payload = await request.text();
 		const proxyRequest = new Request(
-			`https://mainnet.helius-rpc.com/?api-key=${env.HELIUS_API_KEY}${
-				search ? `&${search.slice(1)}` : ''
-			}`,
+			`https://${
+				pathname === '/' ? 'mainnet.helius-rpc.com' : 'api.helius.xyz'
+			}${pathname}?api-key=${env.HELIUS_API_KEY}${search ? `&${search.slice(1)}` : ''}`,
 			{
 				method: request.method,
 				body: payload || null,
 				headers: {
 					'Content-Type': 'application/json',
 					'X-Helius-Cloudflare-Proxy': 'true',
-					...corsHeaders,
 				},
 			}
 		);
 
-		return await fetch(proxyRequest);
+		return await fetch(proxyRequest).then(res => {
+			return new Response(res.body, {
+				status: res.status,
+				headers: corsHeaders,
+			});
+		});
 	},
 };
