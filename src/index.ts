@@ -16,15 +16,8 @@ export default {
 		const corsHeaders: Record<string, string> = {
 			'Access-Control-Allow-Methods': 'GET, HEAD, POST, PUT, OPTIONS',
 			'Access-Control-Allow-Headers': '*',
+			'Access-Control-Allow-Origin': '*',
 		};
-		if (supportedDomains) {
-			const origin = request.headers.get('Origin');
-			if (origin && supportedDomains.includes(origin)) {
-				corsHeaders['Access-Control-Allow-Origin'] = origin;
-			}
-		} else {
-			corsHeaders['Access-Control-Allow-Origin'] = '*';
-		}
 
 		if (request.method === 'OPTIONS') {
 			return new Response(null, {
